@@ -1,0 +1,476 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // Global safety net
+    match /{document=**} {
+      allow read, write: if false;
+    }
+
+    // --- Primitive Helpers ---
+    function incoming() {
+      return request.resource.data;
+    }
+
+    function existing() {
+      return resource.data;
+    }
+
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    function isValidId(id) {
+      return id is string && id.size() >= 1 && id.size() <= 128 && id.matches('^[a-zA-Z0-9_\\-]+$');
+    }
+
+    function isOwner(userId) {
+      return isSignedIn() && request.auth.uid == userId;
+    }
+
+    function isSuperAdminEmail() {
+      return isSignedIn() &&
+             request.auth.token.email_verified == true &&
+             request.auth.token.email == 'sahiljutt060@gmail.com';
+    }
+
+    function hasStaffRole() {
+      return isSignedIn() &&
+             exists(/databases/$(database)/documents/roles/$(request.auth.uid)) &&
+             get(/databases/$(database)/documents/roles/$(request.auth.uid)).data.role in ['SUPER_ADMIN', 'ADMIN', 'CONTENT_MANAGER', 'SUPPORT_AGENT'];
+    }
+
+    function isAdmin() {
+      return isSuperAdminEmail() || hasStaffRole();
+    }
+
+    function isFullAdmin() {
+      return isSuperAdminEmail() ||
+             (isSignedIn() &&
+              exists(/databases/$(database)/documents/roles/$(request.auth.uid)) &&
+              get(/databases/$(database)/documents/roles/$(request.auth.uid)).data.role in ['SUPER_ADMIN', 'ADMIN']);
+    }
+
+    function isPaymentReviewer() {
+      return isFullAdmin() ||
+             (isSignedIn() &&
+              exists(/databases/$(database)/documents/roles/$(request.auth.uid)) &&
+              get(/databases/$(database)/documents/roles/$(request.auth.uid)).data.role == 'SUPPORT_AGENT');
+    }
+
+    function isContentAdmin() {
+      return isFullAdmin() ||
+             (isSignedIn() &&
+              exists(/databases/$(database)/documents/roles/$(request.auth.uid)) &&
+              get(/databases/$(database)/documents/roles/$(request.auth.uid)).data.role == 'CONTENT_MANAGER');
+    }
+
+    function isValidTimestamp(ts) {
+      return ts is timestamp && ts <= request.time;
+    }
+
+    // --- Entity Validation Helpers ---
+    function isValidUser(data) {
+      return data.uid is string && data.uid.size() >= 1 && data.uid.size() <= 128 &&
+             data.fullName is string && data.fullName.size() >= 1 && data.fullName.size() <= 100 &&
+             data.email is string && data.email.size() >= 3 && data.email.size() <= 150 &&
+             (!('photoUrl' in data) || data.photoUrl == null || (data.photoUrl is string && data.photoUrl.size() <= 500)) &&
+             data.role in ['SUPER_ADMIN', 'ADMIN', 'CONTENT_MANAGER', 'SUPPORT_AGENT', 'USER'] &&
+             data.accountStatus in ['ACTIVE', 'SUSPENDED'] &&
+             data.preferredLanguage in ['EN', 'UR', 'AR'] &&
+             data.trialStatus in ['NOT_STARTED', 'ACTIVE', 'EXPIRING_SOON', 'EXPIRED'] &&
+             (!('trialStartAt' in data) || data.trialStartAt == null || data.trialStartAt is timestamp) &&
+             (!('trialExpiresAt' in data) || data.trialExpiresAt == null || data.trialExpiresAt is timestamp) &&
+             (!('trialActivatedMethod' in data) || data.trialActivatedMethod == null || (data.trialActivatedMethod is string && data.trialActivatedMethod.size() <= 50)) &&
+             data.subscriptionStatus in ['NONE', 'TRIAL', 'PENDING', 'ACTIVE', 'EXPIRED', 'CANCELLED', 'REJECTED'] &&
+             (!('subscriptionPlanId' in data) || data.subscriptionPlanId == null || (data.subscriptionPlanId is string && data.subscriptionPlanId.size() <= 128)) &&
+             (!('subscriptionExpiresAt' in data) || data.subscriptionExpiresAt == null || data.subscriptionExpiresAt is timestamp) &&
+             isValidTimestamp(data.createdAt) &&
+             isValidTimestamp(data.updatedAt);
+    }
+
+    function isValidRoleAssignment(data) {
+      return data.userId is string && data.userId.size() >= 1 && data.userId.size() <= 128 &&
+             data.role in ['SUPER_ADMIN', 'ADMIN', 'CONTENT_MANAGER', 'SUPPORT_AGENT', 'USER'] &&
+             data.assignedBy is string && data.assignedBy.size() >= 1 && data.assignedBy.size() <= 128 &&
+             isValidTimestamp(data.createdAt) &&
+             isValidTimestamp(data.updatedAt);
+    }
+
+    function isValidResource(data) {
+      return data.title is string && data.title.size() >= 1 && data.title.size() <= 160 &&
+             data.description is string && data.description.size() <= 2000 &&
+             data.categoryId is string && data.categoryId.size() >= 1 && data.categoryId.size() <= 64 &&
+             data.fileUrl is string && data.fileUrl.size() >= 1 && data.fileUrl.size() <= 1000 &&
+             (!('thumbnailUrl' in data) || data.thumbnailUrl == null || (data.thumbnailUrl is string && data.thumbnailUrl.size() <= 1000)) &&
+             data.fileName is string && data.fileName.size() >= 1 && data.fileName.size() <= 200 &&
+             data.fileType in ['PDF', 'MP4', 'JPG', 'DWG', 'DXF', 'MAX', 'SKP'] &&
+             data.fileSizeLabel is string && data.fileSizeLabel.size() >= 1 && data.fileSizeLabel.size() <= 40 &&
+             data.fileSizeBytes is int && data.fileSizeBytes >= 0 &&
+             data.premium is bool &&
+             data.published is bool &&
+             data.archived is bool &&
+             data.uploadedBy is string && data.uploadedBy.size() >= 1 && data.uploadedBy.size() <= 128 &&
+             isValidTimestamp(data.createdAt) &&
+             isValidTimestamp(data.updatedAt);
+    }
+
+    function isValidCourse(data) {
+      return data.title is string && data.title.size() >= 1 && data.title.size() <= 160 &&
+             data.description is string && data.description.size() <= 3000 &&
+             data.instructorName is string && data.instructorName.size() >= 1 && data.instructorName.size() <= 100 &&
+             (!('instructorBio' in data) || data.instructorBio == null || (data.instructorBio is string && data.instructorBio.size() <= 500)) &&
+             (!('thumbnailUrl' in data) || data.thumbnailUrl == null || (data.thumbnailUrl is string && data.thumbnailUrl.size() <= 1000)) &&
+             data.categoryId is string && data.categoryId.size() >= 1 && data.categoryId.size() <= 64 &&
+             (!('level' in data) || data.level == null || (data.level is string && data.level.size() <= 50)) &&
+             data.totalLessons is int && data.totalLessons >= 0 && data.totalLessons <= 500 &&
+             data.durationLabel is string && data.durationLabel.size() >= 1 && data.durationLabel.size() <= 50 &&
+             data.premium is bool &&
+             data.published is bool &&
+             isValidTimestamp(data.createdAt) &&
+             isValidTimestamp(data.updatedAt);
+    }
+
+    function isValidCourseModule(data) {
+      return data.courseId is string && data.courseId.size() >= 1 && data.courseId.size() <= 128 &&
+             data.title is string && data.title.size() >= 1 && data.title.size() <= 160 &&
+             data.orderIndex is int && data.orderIndex >= 0 && data.orderIndex <= 500 &&
+             data.published is bool &&
+             isValidTimestamp(data.createdAt) &&
+             isValidTimestamp(data.updatedAt);
+    }
+
+    function isValidCourseLesson(data) {
+      return data.courseId is string && data.courseId.size() >= 1 && data.courseId.size() <= 128 &&
+             data.moduleId is string && data.moduleId.size() >= 1 && data.moduleId.size() <= 128 &&
+             data.title is string && data.title.size() >= 1 && data.title.size() <= 160 &&
+             (!('description' in data) || data.description == null || (data.description is string && data.description.size() <= 2000)) &&
+             data.lessonType in ['VIDEO', 'PDF', 'DRAWING'] &&
+             (!('videoUrl' in data) || data.videoUrl == null || (data.videoUrl is string && data.videoUrl.size() <= 1000)) &&
+             (!('pdfUrl' in data) || data.pdfUrl == null || (data.pdfUrl is string && data.pdfUrl.size() <= 1000)) &&
+             data.durationLabel is string && data.durationLabel.size() >= 1 && data.durationLabel.size() <= 50 &&
+             data.orderIndex is int && data.orderIndex >= 0 && data.orderIndex <= 500 &&
+             data.premium is bool &&
+             data.published is bool &&
+             isValidTimestamp(data.createdAt) &&
+             isValidTimestamp(data.updatedAt);
+    }
+
+    function isValidCourseProgress(data, userId) {
+      return data.userId == userId &&
+             data.courseId is string && data.courseId.size() >= 1 && data.courseId.size() <= 128 &&
+             data.completedLessonIds is list && data.completedLessonIds.size() <= 200 &&
+             (data.completedLessonIds.size() == 0 || data.completedLessonIds[0] is string) &&
+             (!('lastLessonId' in data) || data.lastLessonId == null || (data.lastLessonId is string && data.lastLessonId.size() <= 128)) &&
+             data.progressPercent is int && data.progressPercent >= 0 && data.progressPercent <= 100 &&
+             isValidTimestamp(data.updatedAt);
+    }
+
+    function isValidSubscriptionPlan(data) {
+      return data.title is string && data.title.size() >= 1 && data.title.size() <= 100 &&
+             data.description is string && data.description.size() <= 1000 &&
+             data.pricePkr is int && data.pricePkr >= 0 && data.pricePkr <= 1000000 &&
+             data.durationDays is int && data.durationDays >= 1 && data.durationDays <= 3650 &&
+             data.accessLevel is string && data.accessLevel.size() >= 1 && data.accessLevel.size() <= 60 &&
+             data.available is bool &&
+             (!('badgeText' in data) || data.badgeText == null || (data.badgeText is string && data.badgeText.size() <= 40)) &&
+             isValidTimestamp(data.createdAt) &&
+             isValidTimestamp(data.updatedAt);
+    }
+
+    function isValidSubscription(data) {
+      return data.userId is string && data.userId.size() >= 1 && data.userId.size() <= 128 &&
+             data.planId is string && data.planId.size() >= 1 && data.planId.size() <= 128 &&
+             data.status in ['TRIAL', 'PENDING', 'ACTIVE', 'EXPIRED', 'CANCELLED', 'REJECTED'] &&
+             data.startAt is timestamp &&
+             data.expiresAt is timestamp &&
+             (!('paymentRequestId' in data) || data.paymentRequestId == null || (data.paymentRequestId is string && data.paymentRequestId.size() <= 128)) &&
+             isValidTimestamp(data.createdAt) &&
+             isValidTimestamp(data.updatedAt);
+    }
+
+    function isValidPaymentRequest(data) {
+      return data.userId is string && data.userId.size() >= 1 && data.userId.size() <= 128 &&
+             data.userEmail is string && data.userEmail.size() >= 3 && data.userEmail.size() <= 150 &&
+             data.userName is string && data.userName.size() >= 1 && data.userName.size() <= 100 &&
+             data.planId is string && data.planId.size() >= 1 && data.planId.size() <= 128 &&
+             data.planTitle is string && data.planTitle.size() >= 1 && data.planTitle.size() <= 120 &&
+             data.provider in ['JAZZCASH', 'EASYPAISA'] &&
+             data.amountPkr is int && data.amountPkr > 0 && data.amountPkr <= 1000000 &&
+             data.transactionReference is string && data.transactionReference.size() >= 4 && data.transactionReference.size() <= 100 &&
+             (!('proofLabel' in data) || data.proofLabel == null || (data.proofLabel is string && data.proofLabel.size() <= 200)) &&
+             (!('proofBase64' in data) || data.proofBase64 == null || (data.proofBase64 is string && data.proofBase64.size() <= 300000)) &&
+             data.status in ['PENDING', 'UNDER_REVIEW', 'APPROVED', 'REJECTED'] &&
+             (!('verificationNote' in data) || data.verificationNote == null || (data.verificationNote is string && data.verificationNote.size() <= 500)) &&
+             (!('reviewedBy' in data) || data.reviewedBy == null || (data.reviewedBy is string && data.reviewedBy.size() <= 128)) &&
+             (!('reviewedAt' in data) || data.reviewedAt == null || data.reviewedAt is timestamp) &&
+             isValidTimestamp(data.createdAt) &&
+             isValidTimestamp(data.updatedAt);
+    }
+
+    function isValidPaymentTransaction(data) {
+      return data.userId is string && data.userId.size() >= 1 && data.userId.size() <= 128 &&
+             data.paymentRequestId is string && data.paymentRequestId.size() >= 1 && data.paymentRequestId.size() <= 128 &&
+             data.planId is string && data.planId.size() >= 1 && data.planId.size() <= 128 &&
+             data.provider in ['JAZZCASH', 'EASYPAISA'] &&
+             data.amountPkr is int && data.amountPkr > 0 &&
+             data.transactionReference is string && data.transactionReference.size() >= 4 && data.transactionReference.size() <= 100 &&
+             data.approvedBy is string && data.approvedBy.size() >= 1 && data.approvedBy.size() <= 128 &&
+             isValidTimestamp(data.createdAt);
+    }
+
+    function isValidNotification(data, userId) {
+      return data.userId == userId &&
+             data.title is string && data.title.size() >= 1 && data.title.size() <= 160 &&
+             data.body is string && data.body.size() >= 1 && data.body.size() <= 500 &&
+             data.type is string && data.type.size() >= 1 && data.type.size() <= 40 &&
+             data.read is bool &&
+             isValidTimestamp(data.createdAt) &&
+             isValidTimestamp(data.updatedAt);
+    }
+
+    function isValidFavorite(data, userId) {
+      return data.userId == userId &&
+             data.resourceId is string && data.resourceId.size() >= 1 && data.resourceId.size() <= 128 &&
+             data.title is string && data.title.size() >= 1 && data.title.size() <= 160 &&
+             data.categoryId is string && data.categoryId.size() >= 1 && data.categoryId.size() <= 64 &&
+             data.fileType is string && data.fileType.size() >= 1 && data.fileType.size() <= 20 &&
+             isValidTimestamp(data.createdAt);
+    }
+
+    function isValidDownloadLog(data, userId) {
+      return data.userId == userId &&
+             data.resourceId is string && data.resourceId.size() >= 1 && data.resourceId.size() <= 128 &&
+             data.title is string && data.title.size() >= 1 && data.title.size() <= 160 &&
+             data.categoryId is string && data.categoryId.size() >= 1 && data.categoryId.size() <= 64 &&
+             data.fileType is string && data.fileType.size() >= 1 && data.fileType.size() <= 20 &&
+             data.fileName is string && data.fileName.size() >= 1 && data.fileName.size() <= 200 &&
+             data.fileSizeBytes is int && data.fileSizeBytes >= 0 &&
+             isValidTimestamp(data.createdAt);
+    }
+
+    function isValidAppSettings(data) {
+      return data.academyName is string && data.academyName.size() >= 1 && data.academyName.size() <= 120 &&
+             (!('supportEmail' in data) || data.supportEmail == null || (data.supportEmail is string && data.supportEmail.size() <= 150)) &&
+             data.whatsappNumber is string && data.whatsappNumber.size() >= 7 && data.whatsappNumber.size() <= 25 &&
+             data.whatsappDefaultMessage is string && data.whatsappDefaultMessage.size() >= 1 && data.whatsappDefaultMessage.size() <= 500 &&
+             data.trialDurationDays is int && data.trialDurationDays >= 1 && data.trialDurationDays <= 90 &&
+             data.trialEnabled is bool &&
+             data.jazzCashAccountName is string && data.jazzCashAccountName.size() >= 1 && data.jazzCashAccountName.size() <= 100 &&
+             data.jazzCashAccountNumber is string && data.jazzCashAccountNumber.size() >= 5 && data.jazzCashAccountNumber.size() <= 40 &&
+             data.jazzCashInstructions is string && data.jazzCashInstructions.size() <= 1000 &&
+             data.easypaisaAccountName is string && data.easypaisaAccountName.size() >= 1 && data.easypaisaAccountName.size() <= 100 &&
+             data.easypaisaAccountNumber is string && data.easypaisaAccountNumber.size() >= 5 && data.easypaisaAccountNumber.size() <= 40 &&
+             data.easypaisaInstructions is string && data.easypaisaInstructions.size() <= 1000 &&
+             (!('defaultLanguage' in data) || data.defaultLanguage in ['EN', 'UR', 'AR']) &&
+             isValidTimestamp(data.updatedAt);
+    }
+
+    function isValidAdminLog(data) {
+      return data.actorUid is string && data.actorUid == request.auth.uid &&
+             data.actorEmail is string && data.actorEmail.size() <= 150 &&
+             data.action is string && data.action.size() >= 1 && data.action.size() <= 80 &&
+             data.targetType is string && data.targetType.size() >= 1 && data.targetType.size() <= 60 &&
+             data.targetId is string && data.targetId.size() >= 1 && data.targetId.size() <= 128 &&
+             data.details is string && data.details.size() <= 500 &&
+             isValidTimestamp(data.createdAt);
+    }
+
+    // --- Collection Rules ---
+
+    match /users/{userId} {
+      allow get: if isValidId(userId) && (isOwner(userId) || isAdmin());
+      allow list: if isAdmin();
+
+      allow create: if isValidId(userId) &&
+                       isOwner(userId) &&
+                       incoming().uid == userId &&
+                       incoming().keys().hasOnly(['uid', 'fullName', 'email', 'photoUrl', 'role', 'accountStatus', 'preferredLanguage', 'trialStatus', 'trialStartAt', 'trialExpiresAt', 'trialActivatedMethod', 'subscriptionStatus', 'subscriptionPlanId', 'subscriptionExpiresAt', 'createdAt', 'updatedAt']) &&
+                       isValidUser(incoming()) &&
+                       (
+                         isSuperAdminEmail() ||
+                         (
+                           incoming().role == 'USER' &&
+                           incoming().accountStatus == 'ACTIVE' &&
+                           incoming().subscriptionStatus in ['NONE', 'TRIAL'] &&
+                           (incoming().trialStatus == 'NOT_STARTED' || incoming().trialStatus == 'ACTIVE')
+                         )
+                       );
+
+      allow update: if isValidId(userId) &&
+                       isSignedIn() &&
+                       isValidUser(incoming()) &&
+                       incoming().uid == existing().uid &&
+                       incoming().createdAt == existing().createdAt &&
+                       (
+                         isFullAdmin() ||
+                         (
+                           isPaymentReviewer() &&
+                           incoming().role == existing().role &&
+                           incoming().accountStatus == existing().accountStatus &&
+                           incoming().diff(existing()).affectedKeys().hasOnly(['subscriptionStatus', 'subscriptionPlanId', 'subscriptionExpiresAt', 'updatedAt'])
+                         ) ||
+                         (
+                           isOwner(userId) &&
+                           existing().accountStatus == 'ACTIVE' &&
+                           incoming().role == existing().role &&
+                           incoming().accountStatus == existing().accountStatus &&
+                           incoming().get('subscriptionPlanId', null) == existing().get('subscriptionPlanId', null) &&
+                           incoming().get('subscriptionExpiresAt', null) == existing().get('subscriptionExpiresAt', null) &&
+                           (
+                             (
+                               incoming().subscriptionStatus == existing().subscriptionStatus &&
+                               incoming().trialStatus == existing().trialStatus &&
+                               incoming().diff(existing()).affectedKeys().hasOnly(['fullName', 'photoUrl', 'preferredLanguage', 'updatedAt'])
+                             ) ||
+                             (
+                               existing().trialStatus == 'NOT_STARTED' &&
+                               incoming().trialStatus == 'ACTIVE' &&
+                               incoming().subscriptionStatus == 'TRIAL' &&
+                               incoming().get('trialStartAt', null) is timestamp &&
+                               incoming().get('trialExpiresAt', null) is timestamp &&
+                               incoming().trialExpiresAt > incoming().trialStartAt &&
+                               incoming().diff(existing()).affectedKeys().hasOnly(['trialStatus', 'trialStartAt', 'trialExpiresAt', 'trialActivatedMethod', 'subscriptionStatus', 'updatedAt'])
+                             )
+                           )
+                         )
+                       );
+
+      allow delete: if false;
+
+      match /courseProgress/{courseId} {
+        allow get: if isValidId(userId) && isValidId(courseId) && isOwner(userId);
+        allow list: if isValidId(userId) && isOwner(userId);
+        allow create, update: if isValidId(userId) && isValidId(courseId) && isOwner(userId) && isValidCourseProgress(incoming(), userId);
+        allow delete: if isValidId(userId) && isValidId(courseId) && isOwner(userId);
+      }
+
+      match /notifications/{notificationId} {
+        allow get: if isValidId(userId) && isValidId(notificationId) && (isOwner(userId) || isAdmin());
+        allow list: if isValidId(userId) && (isOwner(userId) || isAdmin());
+        allow create: if isValidId(userId) && isValidId(notificationId) && (isOwner(userId) || isAdmin()) && isValidNotification(incoming(), userId);
+        allow update: if isValidId(userId) && isValidId(notificationId) &&
+                         isValidNotification(incoming(), userId) &&
+                         incoming().createdAt == existing().createdAt &&
+                         (
+                           isAdmin() ||
+                           (isOwner(userId) && incoming().diff(existing()).affectedKeys().hasOnly(['read', 'updatedAt']))
+                         );
+        allow delete: if isValidId(userId) && isValidId(notificationId) && (isOwner(userId) || isAdmin());
+      }
+
+      match /favorites/{resourceId} {
+        allow get: if isValidId(userId) && isValidId(resourceId) && isOwner(userId);
+        allow list: if isValidId(userId) && isOwner(userId);
+        allow create, update: if isValidId(userId) && isValidId(resourceId) && isOwner(userId) && isValidFavorite(incoming(), userId);
+        allow delete: if isValidId(userId) && isValidId(resourceId) && isOwner(userId);
+      }
+
+      match /downloads/{downloadId} {
+        allow get: if isValidId(userId) && isValidId(downloadId) && isOwner(userId);
+        allow list: if isValidId(userId) && isOwner(userId);
+        allow create: if isValidId(userId) && isValidId(downloadId) && isOwner(userId) && isValidDownloadLog(incoming(), userId);
+        allow update: if false;
+        allow delete: if isValidId(userId) && isValidId(downloadId) && isOwner(userId);
+      }
+    }
+
+    match /roles/{userId} {
+      allow get: if isValidId(userId) && (isOwner(userId) || isAdmin());
+      allow list: if isFullAdmin();
+      allow create, update: if isValidId(userId) && isFullAdmin() && incoming().keys().hasOnly(['userId', 'role', 'assignedBy', 'createdAt', 'updatedAt']) && isValidRoleAssignment(incoming());
+      allow delete: if isValidId(userId) && isFullAdmin();
+    }
+
+    match /resources/{resourceId} {
+      allow get: if isValidId(resourceId) && isSignedIn() && ((existing().published == true && existing().archived == false) || isAdmin());
+      allow list: if isSignedIn() && ((existing().published == true && existing().archived == false) || isAdmin());
+      allow create: if isValidId(resourceId) && isContentAdmin() && incoming().keys().hasOnly(['title', 'description', 'categoryId', 'fileUrl', 'thumbnailUrl', 'fileName', 'fileType', 'fileSizeLabel', 'fileSizeBytes', 'premium', 'published', 'archived', 'uploadedBy', 'createdAt', 'updatedAt']) && isValidResource(incoming());
+      allow update: if isValidId(resourceId) && isContentAdmin() && incoming().keys().hasOnly(['title', 'description', 'categoryId', 'fileUrl', 'thumbnailUrl', 'fileName', 'fileType', 'fileSizeLabel', 'fileSizeBytes', 'premium', 'published', 'archived', 'uploadedBy', 'createdAt', 'updatedAt']) && isValidResource(incoming()) && incoming().createdAt == existing().createdAt;
+      allow delete: if isValidId(resourceId) && isContentAdmin();
+    }
+
+    match /courses/{courseId} {
+      allow get: if isValidId(courseId) && isSignedIn() && (existing().published == true || isAdmin());
+      allow list: if isSignedIn() && (existing().published == true || isAdmin());
+      allow create: if isValidId(courseId) && isContentAdmin() && incoming().keys().hasOnly(['title', 'description', 'instructorName', 'instructorBio', 'thumbnailUrl', 'categoryId', 'level', 'totalLessons', 'durationLabel', 'premium', 'published', 'createdAt', 'updatedAt']) && isValidCourse(incoming());
+      allow update: if isValidId(courseId) && isContentAdmin() && incoming().keys().hasOnly(['title', 'description', 'instructorName', 'instructorBio', 'thumbnailUrl', 'categoryId', 'level', 'totalLessons', 'durationLabel', 'premium', 'published', 'createdAt', 'updatedAt']) && isValidCourse(incoming()) && incoming().createdAt == existing().createdAt;
+      allow delete: if isValidId(courseId) && isContentAdmin();
+    }
+
+    match /courseModules/{moduleId} {
+      allow get: if isValidId(moduleId) && isSignedIn() && (existing().published == true || isAdmin());
+      allow list: if isSignedIn() && (existing().published == true || isAdmin());
+      allow create: if isValidId(moduleId) && isContentAdmin() && incoming().keys().hasOnly(['courseId', 'title', 'orderIndex', 'published', 'createdAt', 'updatedAt']) && isValidCourseModule(incoming());
+      allow update: if isValidId(moduleId) && isContentAdmin() && incoming().keys().hasOnly(['courseId', 'title', 'orderIndex', 'published', 'createdAt', 'updatedAt']) && isValidCourseModule(incoming()) && incoming().createdAt == existing().createdAt;
+      allow delete: if isValidId(moduleId) && isContentAdmin();
+    }
+
+    match /courseLessons/{lessonId} {
+      allow get: if isValidId(lessonId) && isSignedIn() && (existing().published == true || isAdmin());
+      allow list: if isSignedIn() && (existing().published == true || isAdmin());
+      allow create: if isValidId(lessonId) && isContentAdmin() && incoming().keys().hasOnly(['courseId', 'moduleId', 'title', 'description', 'lessonType', 'videoUrl', 'pdfUrl', 'durationLabel', 'orderIndex', 'premium', 'published', 'createdAt', 'updatedAt']) && isValidCourseLesson(incoming());
+      allow update: if isValidId(lessonId) && isContentAdmin() && incoming().keys().hasOnly(['courseId', 'moduleId', 'title', 'description', 'lessonType', 'videoUrl', 'pdfUrl', 'durationLabel', 'orderIndex', 'premium', 'published', 'createdAt', 'updatedAt']) && isValidCourseLesson(incoming()) && incoming().createdAt == existing().createdAt;
+      allow delete: if isValidId(lessonId) && isContentAdmin();
+    }
+
+    match /subscriptionPlans/{planId} {
+      allow get: if isValidId(planId) && isSignedIn() && (existing().available == true || isAdmin());
+      allow list: if isSignedIn() && (existing().available == true || isAdmin());
+      allow create: if isValidId(planId) && isFullAdmin() && incoming().keys().hasOnly(['title', 'description', 'pricePkr', 'durationDays', 'accessLevel', 'available', 'badgeText', 'createdAt', 'updatedAt']) && isValidSubscriptionPlan(incoming());
+      allow update: if isValidId(planId) && isFullAdmin() && incoming().keys().hasOnly(['title', 'description', 'pricePkr', 'durationDays', 'accessLevel', 'available', 'badgeText', 'createdAt', 'updatedAt']) && isValidSubscriptionPlan(incoming()) && incoming().createdAt == existing().createdAt;
+      allow delete: if isValidId(planId) && isFullAdmin();
+    }
+
+    match /subscriptions/{subscriptionId} {
+      allow get: if isValidId(subscriptionId) && isSignedIn() && (existing().userId == request.auth.uid || isAdmin());
+      allow list: if isSignedIn() && (existing().userId == request.auth.uid || isAdmin());
+      allow create: if isValidId(subscriptionId) && isPaymentReviewer() && incoming().keys().hasOnly(['userId', 'planId', 'status', 'startAt', 'expiresAt', 'paymentRequestId', 'createdAt', 'updatedAt']) && isValidSubscription(incoming());
+      allow update: if isValidId(subscriptionId) && isPaymentReviewer() && incoming().keys().hasOnly(['userId', 'planId', 'status', 'startAt', 'expiresAt', 'paymentRequestId', 'createdAt', 'updatedAt']) && isValidSubscription(incoming()) && incoming().createdAt == existing().createdAt;
+      allow delete: if false;
+    }
+
+    match /paymentRequests/{requestId} {
+      allow get: if isValidId(requestId) && isSignedIn() && (existing().userId == request.auth.uid || isAdmin());
+      allow list: if isSignedIn() && (existing().userId == request.auth.uid || isAdmin());
+      allow create: if isValidId(requestId) &&
+                       isSignedIn() &&
+                       incoming().userId == request.auth.uid &&
+                       incoming().status == 'PENDING' &&
+                       !('reviewedBy' in incoming()) &&
+                       !('reviewedAt' in incoming()) &&
+                       incoming().keys().hasOnly(['userId', 'userEmail', 'userName', 'planId', 'planTitle', 'provider', 'amountPkr', 'transactionReference', 'proofLabel', 'proofBase64', 'status', 'verificationNote', 'createdAt', 'updatedAt']) &&
+                       isValidPaymentRequest(incoming()) &&
+                       exists(/databases/$(database)/documents/subscriptionPlans/$(incoming().planId));
+      allow update: if isValidId(requestId) &&
+                       isPaymentReviewer() &&
+                       incoming().keys().hasOnly(['userId', 'userEmail', 'userName', 'planId', 'planTitle', 'provider', 'amountPkr', 'transactionReference', 'proofLabel', 'proofBase64', 'status', 'verificationNote', 'reviewedBy', 'reviewedAt', 'createdAt', 'updatedAt']) &&
+                       isValidPaymentRequest(incoming()) &&
+                       incoming().userId == existing().userId &&
+                       incoming().createdAt == existing().createdAt &&
+                       existing().status in ['PENDING', 'UNDER_REVIEW'];
+      allow delete: if false;
+    }
+
+    match /paymentTransactions/{transactionId} {
+      allow get: if isValidId(transactionId) && isSignedIn() && (existing().userId == request.auth.uid || isAdmin());
+      allow list: if isSignedIn() && (existing().userId == request.auth.uid || isAdmin());
+      allow create: if isValidId(transactionId) && isPaymentReviewer() && incoming().keys().hasOnly(['userId', 'paymentRequestId', 'planId', 'provider', 'amountPkr', 'transactionReference', 'approvedBy', 'createdAt']) && isValidPaymentTransaction(incoming());
+      allow update, delete: if false;
+    }
+
+    match /appSettings/{settingId} {
+      allow get: if isValidId(settingId) && isSignedIn();
+      allow list: if isSignedIn();
+      allow create, update: if isValidId(settingId) && isFullAdmin() && incoming().keys().hasOnly(['academyName', 'supportEmail', 'whatsappNumber', 'whatsappDefaultMessage', 'trialDurationDays', 'trialEnabled', 'jazzCashAccountName', 'jazzCashAccountNumber', 'jazzCashInstructions', 'easypaisaAccountName', 'easypaisaAccountNumber', 'easypaisaInstructions', 'defaultLanguage', 'updatedAt']) && isValidAppSettings(incoming());
+      allow delete: if false;
+    }
+
+    match /adminLogs/{logId} {
+      allow get: if isValidId(logId) && isAdmin();
+      allow list: if isAdmin();
+      allow create: if isValidId(logId) && isAdmin() && incoming().keys().hasOnly(['actorUid', 'actorEmail', 'action', 'targetType', 'targetId', 'details', 'createdAt']) && isValidAdminLog(incoming());
+      allow update, delete: if false;
+    }
+  }
+}

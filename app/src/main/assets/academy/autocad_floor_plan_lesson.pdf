@@ -1,0 +1,118 @@
+%PDF-1.4
+1 0 obj
+<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica >>
+endobj
+2 0 obj
+<< /Length 748 >>
+stream
+BT
+/F1 18 Tf
+50 760 Td
+(ZAHID ARCHITECTURE ACADEMY) Tj
+0 -26 Td
+/F1 12 Tf
+(Lesson 1: 5 Marla & 10 Marla Residential Planning Standards) Tj
+0 -24 Td
+(1. Plot Dimensions: 5 Marla = 25 ft x 45 ft | 10 Marla = 35 ft x 65 ft) Tj
+0 -18 Td
+(2. Standard Wall Thickness: 9 inch exterior load-bearing, 4.5 inch partition) Tj
+0 -18 Td
+(3. Minimum Clearances: Corridor 3 ft 6 in, Staircase width 3 ft 6 in) Tj
+0 -18 Td
+(4. Cross Ventilation: Minimum 15% window-to-floor area ratio per bedroom) Tj
+0 -18 Td
+(5. Car Porch: Minimum 11 ft x 16 ft clear parking bay for sedan clearance) Tj
+ET
+0.04 0.23 0.47 RG
+2 w
+50 320 500 260 re S
+1 w
+50 450 m 550 450 l S
+250 320 m 250 580 l S
+400 450 m 400 580 l S
+1.0 0.47 0.0 RG
+1.5 w
+70 340 160 90 re S
+270 340 260 90 re S
+
+endstream
+endobj
+3 0 obj
+<< /Length 583 >>
+stream
+BT
+/F1 16 Tf
+50 760 Td
+(Page 2: AutoCAD Layering & Structural Grid Standards) Tj
+0 -24 Td
+/F1 11 Tf
+(- A-WALL: 0.35mm continuous Navy/White exterior and interior masonry) Tj
+0 -18 Td
+(- A-DOOR / A-WIND: 0.20mm swing arcs and casement sill lines) Tj
+0 -18 Td
+(- A-DIM: 0.13mm architectural ticks with feet-inches fractional units) Tj
+0 -18 Td
+(- S-COLS: 0.40mm reinforced concrete columns 9x12 or 9x15 inches) Tj
+0 -18 Td
+(- P-PLUM / E-LITE: MEP coordination layers for sanitary & lighting) Tj
+ET
+0.04 0.23 0.47 RG
+1.5 w
+60 360 480 220 re S
+60 470 m 540 470 l S
+300 360 m 300 580 l S
+
+endstream
+endobj
+4 0 obj
+<< /Length 437 >>
+stream
+BT
+/F1 16 Tf
+50 760 Td
+(Page 3: 3D Max Lighting & Exterior Elevation Checklist) Tj
+0 -24 Td
+/F1 11 Tf
+(1. Set real-world units to Feet/Inches before importing DWG plans.) Tj
+0 -18 Td
+(2. Use V-Ray Sun + Sky at 35 deg azimuth for realistic courtyard shadows.) Tj
+0 -18 Td
+(3. Apply crisp 4K PBR travertine, fair-face concrete, and cedar louvers.) Tj
+0 -18 Td
+(4. Configure physical camera ISO 100, f/8, shutter 1/125 for daylight.) Tj
+ET
+
+endstream
+endobj
+5 0 obj
+<< /Type /Page /Parent 8 0 R /MediaBox [0 0 612 792] /Resources << /Font << /F1 1 0 R >> >> /Contents 2 0 R >>
+endobj
+6 0 obj
+<< /Type /Page /Parent 8 0 R /MediaBox [0 0 612 792] /Resources << /Font << /F1 1 0 R >> >> /Contents 3 0 R >>
+endobj
+7 0 obj
+<< /Type /Page /Parent 8 0 R /MediaBox [0 0 612 792] /Resources << /Font << /F1 1 0 R >> >> /Contents 4 0 R >>
+endobj
+8 0 obj
+<< /Type /Pages /Kids [5 0 R 6 0 R 7 0 R] /Count 3 >>
+endobj
+9 0 obj
+<< /Type /Catalog /Pages 8 0 R >>
+endobj
+xref
+0 10
+0000000000 65535 f 
+0000000009 00000 n 
+0000000079 00000 n 
+0000000878 00000 n 
+0000001512 00000 n 
+0000002000 00000 n 
+0000002126 00000 n 
+0000002252 00000 n 
+0000002378 00000 n 
+0000002447 00000 n 
+trailer
+<< /Size 10 /Root 9 0 R >>
+startxref
+2496
+%%EOF

@@ -1,0 +1,6 @@
+{
+  "name": "Zahid Architecture Academy",
+  "description": "Digital architecture education platform with courses, PDF lessons, DWG/DXF/3D Max resources, 7-day free trial, subscriptions, and offline mobile downloads.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}

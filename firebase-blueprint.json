@@ -1,0 +1,355 @@
+{
+  "entities": {
+    "User": {
+      "title": "User",
+      "description": "Authenticated academy user account, role, language preference, trial state, and subscription summary.",
+      "type": "object",
+      "properties": {
+        "uid": { "type": "string", "description": "Firebase Auth UID" },
+        "fullName": { "type": "string", "description": "Display name" },
+        "email": { "type": "string", "description": "Email address" },
+        "photoUrl": { "type": "string", "description": "Optional avatar URL" },
+        "role": { "type": "string", "enum": ["SUPER_ADMIN", "ADMIN", "CONTENT_MANAGER", "SUPPORT_AGENT", "USER"] },
+        "accountStatus": { "type": "string", "enum": ["ACTIVE", "SUSPENDED"] },
+        "preferredLanguage": { "type": "string", "enum": ["EN", "UR", "AR"] },
+        "trialStatus": { "type": "string", "enum": ["NOT_STARTED", "ACTIVE", "EXPIRING_SOON", "EXPIRED"] },
+        "trialStartAt": { "type": "string", "format": "date-time", "description": "Server timestamp when 7-day trial started" },
+        "trialExpiresAt": { "type": "string", "format": "date-time", "description": "Timestamp when trial expires" },
+        "trialActivatedMethod": { "type": "string", "description": "How trial was started" },
+        "subscriptionStatus": { "type": "string", "enum": ["NONE", "TRIAL", "PENDING", "ACTIVE", "EXPIRED", "CANCELLED", "REJECTED"] },
+        "subscriptionPlanId": { "type": "string", "description": "Active plan document ID" },
+        "subscriptionExpiresAt": { "type": "string", "format": "date-time", "description": "Active paid subscription expiration" },
+        "createdAt": { "type": "string", "format": "date-time", "description": "Written with FieldValue.serverTimestamp()" },
+        "updatedAt": { "type": "string", "format": "date-time", "description": "Written with FieldValue.serverTimestamp()" }
+      },
+      "required": ["uid", "fullName", "email", "role", "accountStatus", "preferredLanguage", "trialStatus", "subscriptionStatus", "createdAt", "updatedAt"]
+    },
+    "RoleAssignment": {
+      "title": "RoleAssignment",
+      "description": "Server-trusted RBAC role assignment document.",
+      "type": "object",
+      "properties": {
+        "userId": { "type": "string" },
+        "role": { "type": "string", "enum": ["SUPER_ADMIN", "ADMIN", "CONTENT_MANAGER", "SUPPORT_AGENT", "USER"] },
+        "assignedBy": { "type": "string" },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "updatedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["userId", "role", "assignedBy", "createdAt", "updatedAt"]
+    },
+    "Resource": {
+      "title": "Resource",
+      "description": "Digital architecture learning resource (PDF, Video, Image, DWG, DXF, 3D Max, Naqshay).",
+      "type": "object",
+      "properties": {
+        "title": { "type": "string" },
+        "description": { "type": "string" },
+        "categoryId": { "type": "string" },
+        "fileUrl": { "type": "string" },
+        "thumbnailUrl": { "type": "string" },
+        "fileName": { "type": "string" },
+        "fileType": { "type": "string", "enum": ["PDF", "MP4", "JPG", "DWG", "DXF", "MAX", "SKP"] },
+        "fileSizeLabel": { "type": "string" },
+        "fileSizeBytes": { "type": "integer" },
+        "premium": { "type": "boolean" },
+        "published": { "type": "boolean" },
+        "archived": { "type": "boolean" },
+        "uploadedBy": { "type": "string" },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "updatedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["title", "description", "categoryId", "fileUrl", "fileName", "fileType", "fileSizeLabel", "fileSizeBytes", "premium", "published", "archived", "uploadedBy", "createdAt", "updatedAt"]
+    },
+    "Course": {
+      "title": "Course",
+      "description": "Structured architecture course.",
+      "type": "object",
+      "properties": {
+        "title": { "type": "string" },
+        "description": { "type": "string" },
+        "instructorName": { "type": "string" },
+        "instructorBio": { "type": "string" },
+        "thumbnailUrl": { "type": "string" },
+        "categoryId": { "type": "string" },
+        "level": { "type": "string" },
+        "totalLessons": { "type": "integer" },
+        "durationLabel": { "type": "string" },
+        "premium": { "type": "boolean" },
+        "published": { "type": "boolean" },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "updatedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["title", "description", "instructorName", "categoryId", "totalLessons", "durationLabel", "premium", "published", "createdAt", "updatedAt"]
+    },
+    "CourseModule": {
+      "title": "CourseModule",
+      "description": "Module belonging to a course.",
+      "type": "object",
+      "properties": {
+        "courseId": { "type": "string" },
+        "title": { "type": "string" },
+        "orderIndex": { "type": "integer" },
+        "published": { "type": "boolean" },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "updatedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["courseId", "title", "orderIndex", "published", "createdAt", "updatedAt"]
+    },
+    "CourseLesson": {
+      "title": "CourseLesson",
+      "description": "Lesson belonging to a course module.",
+      "type": "object",
+      "properties": {
+        "courseId": { "type": "string" },
+        "moduleId": { "type": "string" },
+        "title": { "type": "string" },
+        "description": { "type": "string" },
+        "lessonType": { "type": "string", "enum": ["VIDEO", "PDF", "DRAWING"] },
+        "videoUrl": { "type": "string" },
+        "pdfUrl": { "type": "string" },
+        "durationLabel": { "type": "string" },
+        "orderIndex": { "type": "integer" },
+        "premium": { "type": "boolean" },
+        "published": { "type": "boolean" },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "updatedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["courseId", "moduleId", "title", "lessonType", "durationLabel", "orderIndex", "premium", "published", "createdAt", "updatedAt"]
+    },
+    "CourseProgress": {
+      "title": "CourseProgress",
+      "description": "Per-user course completion tracking.",
+      "type": "object",
+      "properties": {
+        "userId": { "type": "string" },
+        "courseId": { "type": "string" },
+        "completedLessonIds": { "type": "array" },
+        "lastLessonId": { "type": "string" },
+        "progressPercent": { "type": "integer" },
+        "updatedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["userId", "courseId", "completedLessonIds", "progressPercent", "updatedAt"]
+    },
+    "SubscriptionPlan": {
+      "title": "SubscriptionPlan",
+      "description": "Configurable academy subscription plan.",
+      "type": "object",
+      "properties": {
+        "title": { "type": "string" },
+        "description": { "type": "string" },
+        "pricePkr": { "type": "integer" },
+        "durationDays": { "type": "integer" },
+        "accessLevel": { "type": "string" },
+        "available": { "type": "boolean" },
+        "badgeText": { "type": "string" },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "updatedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["title", "description", "pricePkr", "durationDays", "accessLevel", "available", "createdAt", "updatedAt"]
+    },
+    "Subscription": {
+      "title": "Subscription",
+      "description": "User subscription history record.",
+      "type": "object",
+      "properties": {
+        "userId": { "type": "string" },
+        "planId": { "type": "string" },
+        "status": { "type": "string", "enum": ["TRIAL", "PENDING", "ACTIVE", "EXPIRED", "CANCELLED", "REJECTED"] },
+        "startAt": { "type": "string", "format": "date-time" },
+        "expiresAt": { "type": "string", "format": "date-time" },
+        "paymentRequestId": { "type": "string" },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "updatedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["userId", "planId", "status", "startAt", "expiresAt", "createdAt", "updatedAt"]
+    },
+    "PaymentRequest": {
+      "title": "PaymentRequest",
+      "description": "JazzCash or Easypaisa manual payment verification request.",
+      "type": "object",
+      "properties": {
+        "userId": { "type": "string" },
+        "userEmail": { "type": "string" },
+        "userName": { "type": "string" },
+        "planId": { "type": "string" },
+        "planTitle": { "type": "string" },
+        "provider": { "type": "string", "enum": ["JAZZCASH", "EASYPAISA"] },
+        "amountPkr": { "type": "integer" },
+        "transactionReference": { "type": "string" },
+        "proofLabel": { "type": "string" },
+        "proofBase64": { "type": "string" },
+        "status": { "type": "string", "enum": ["PENDING", "UNDER_REVIEW", "APPROVED", "REJECTED"] },
+        "verificationNote": { "type": "string" },
+        "reviewedBy": { "type": "string" },
+        "reviewedAt": { "type": "string", "format": "date-time" },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "updatedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["userId", "userEmail", "userName", "planId", "planTitle", "provider", "amountPkr", "transactionReference", "status", "createdAt", "updatedAt"]
+    },
+    "PaymentTransaction": {
+      "title": "PaymentTransaction",
+      "description": "Approved payment ledger record.",
+      "type": "object",
+      "properties": {
+        "userId": { "type": "string" },
+        "paymentRequestId": { "type": "string" },
+        "planId": { "type": "string" },
+        "provider": { "type": "string", "enum": ["JAZZCASH", "EASYPAISA"] },
+        "amountPkr": { "type": "integer" },
+        "transactionReference": { "type": "string" },
+        "approvedBy": { "type": "string" },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["userId", "paymentRequestId", "planId", "provider", "amountPkr", "transactionReference", "approvedBy", "createdAt"]
+    },
+    "NotificationItem": {
+      "title": "NotificationItem",
+      "description": "User-scoped in-app notification.",
+      "type": "object",
+      "properties": {
+        "userId": { "type": "string" },
+        "title": { "type": "string" },
+        "body": { "type": "string" },
+        "type": { "type": "string" },
+        "read": { "type": "boolean" },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "updatedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["userId", "title", "body", "type", "read", "createdAt", "updatedAt"]
+    },
+    "FavoriteItem": {
+      "title": "FavoriteItem",
+      "description": "User favorite resource bookmark.",
+      "type": "object",
+      "properties": {
+        "userId": { "type": "string" },
+        "resourceId": { "type": "string" },
+        "title": { "type": "string" },
+        "categoryId": { "type": "string" },
+        "fileType": { "type": "string" },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["userId", "resourceId", "title", "categoryId", "fileType", "createdAt"]
+    },
+    "DownloadLog": {
+      "title": "DownloadLog",
+      "description": "Cloud audit record of a user download.",
+      "type": "object",
+      "properties": {
+        "userId": { "type": "string" },
+        "resourceId": { "type": "string" },
+        "title": { "type": "string" },
+        "categoryId": { "type": "string" },
+        "fileType": { "type": "string" },
+        "fileName": { "type": "string" },
+        "fileSizeBytes": { "type": "integer" },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["userId", "resourceId", "title", "categoryId", "fileType", "fileName", "fileSizeBytes", "createdAt"]
+    },
+    "AppSettings": {
+      "title": "AppSettings",
+      "description": "Academy global configuration (trial rules, payment instructions, internal WhatsApp support config).",
+      "type": "object",
+      "properties": {
+        "academyName": { "type": "string" },
+        "supportEmail": { "type": "string" },
+        "whatsappNumber": { "type": "string" },
+        "whatsappDefaultMessage": { "type": "string" },
+        "trialDurationDays": { "type": "integer" },
+        "trialEnabled": { "type": "boolean" },
+        "jazzCashAccountName": { "type": "string" },
+        "jazzCashAccountNumber": { "type": "string" },
+        "jazzCashInstructions": { "type": "string" },
+        "easypaisaAccountName": { "type": "string" },
+        "easypaisaAccountNumber": { "type": "string" },
+        "easypaisaInstructions": { "type": "string" },
+        "defaultLanguage": { "type": "string" },
+        "updatedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["academyName", "whatsappNumber", "whatsappDefaultMessage", "trialDurationDays", "trialEnabled", "jazzCashAccountName", "jazzCashAccountNumber", "jazzCashInstructions", "easypaisaAccountName", "easypaisaAccountNumber", "easypaisaInstructions", "updatedAt"]
+    },
+    "AdminLog": {
+      "title": "AdminLog",
+      "description": "Audit log of admin actions.",
+      "type": "object",
+      "properties": {
+        "actorUid": { "type": "string" },
+        "actorEmail": { "type": "string" },
+        "action": { "type": "string" },
+        "targetType": { "type": "string" },
+        "targetId": { "type": "string" },
+        "details": { "type": "string" },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["actorUid", "actorEmail", "action", "targetType", "targetId", "details", "createdAt"]
+    }
+  },
+  "firestore": {
+    "/users/{userId}": {
+      "schema": { "$ref": "#/entities/User" },
+      "description": "User profiles, role, trial, and subscription state."
+    },
+    "/roles/{userId}": {
+      "schema": { "$ref": "#/entities/RoleAssignment" },
+      "description": "Admin/staff RBAC assignments."
+    },
+    "/resources/{resourceId}": {
+      "schema": { "$ref": "#/entities/Resource" },
+      "description": "Published digital architecture resources."
+    },
+    "/courses/{courseId}": {
+      "schema": { "$ref": "#/entities/Course" },
+      "description": "Architecture learning courses."
+    },
+    "/courseModules/{moduleId}": {
+      "schema": { "$ref": "#/entities/CourseModule" },
+      "description": "Modules within courses."
+    },
+    "/courseLessons/{lessonId}": {
+      "schema": { "$ref": "#/entities/CourseLesson" },
+      "description": "Lessons within course modules."
+    },
+    "/users/{userId}/courseProgress/{courseId}": {
+      "schema": { "$ref": "#/entities/CourseProgress" },
+      "description": "User course completion state."
+    },
+    "/subscriptionPlans/{planId}": {
+      "schema": { "$ref": "#/entities/SubscriptionPlan" },
+      "description": "Subscription tiers configured by admin."
+    },
+    "/subscriptions/{subscriptionId}": {
+      "schema": { "$ref": "#/entities/Subscription" },
+      "description": "Subscription records."
+    },
+    "/paymentRequests/{requestId}": {
+      "schema": { "$ref": "#/entities/PaymentRequest" },
+      "description": "Manual JazzCash/Easypaisa payment requests."
+    },
+    "/paymentTransactions/{transactionId}": {
+      "schema": { "$ref": "#/entities/PaymentTransaction" },
+      "description": "Verified approved payment transactions."
+    },
+    "/users/{userId}/notifications/{notificationId}": {
+      "schema": { "$ref": "#/entities/NotificationItem" },
+      "description": "Per-user notifications."
+    },
+    "/users/{userId}/favorites/{resourceId}": {
+      "schema": { "$ref": "#/entities/FavoriteItem" },
+      "description": "Per-user favorite resources."
+    },
+    "/users/{userId}/downloads/{downloadId}": {
+      "schema": { "$ref": "#/entities/DownloadLog" },
+      "description": "Per-user download history."
+    },
+    "/appSettings/{settingId}": {
+      "schema": { "$ref": "#/entities/AppSettings" },
+      "description": "Global academy settings."
+    },
+    "/adminLogs/{logId}": {
+      "schema": { "$ref": "#/entities/AdminLog" },
+      "description": "Immutable admin audit log."
+    }
+  }
+}
